@@ -11,7 +11,7 @@ func (app *application) showSchoolHandler(w http.ResponseWriter, r *http.Request
 
 	id, err := app.readIDParam(r)
 	if err != nil {
-		http.NotFound(w, r)
+		app.notFoundResponse(w, r)
 		return
 	}
 
@@ -26,8 +26,7 @@ func (app *application) showSchoolHandler(w http.ResponseWriter, r *http.Request
 	// Encode the enveloped struct to JSON and send it as the HTTP response.
 	err = app.writeJSON(w, http.StatusOK, envelope{"school": school}, nil)
 	if err != nil {
-		app.logger.Println(err)
-		http.Error(w, "The server encountered a problem and could not process your request", http.StatusInternalServerError)
+		app.serverErrorResponse(w, r, err)
 	}
 
 }
