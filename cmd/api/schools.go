@@ -1,8 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
+
+	"github.com/questworthy/udise-api/internal/data"
 )
 
 // Add a handler for "GET /v1/schools/:id" endpoint.
@@ -13,6 +14,20 @@ func (app *application) showSchoolHandler(w http.ResponseWriter, r *http.Request
 		http.NotFound(w, r)
 		return
 	}
-	fmt.Fprintf(w, "show the details of school %d\n", id)
+
+	// Create a new instance of the School struct, containing the ID (UDISECode)
+	// we extracted from the URL and some dummy data.
+
+	school := data.School{
+		UDISECode:  id,
+		SchoolName: "Dummy School",
+	}
+
+	// Encode the struct to JSON and send it as the HTTP response.
+	err = app.writeJSON(w, http.StatusOK, school, nil)
+	if err != nil {
+		app.logger.Println(err)
+		http.Error(w, "The server encountered a problem and could not process your request", http.StatusInternalServerError)
+	}
 
 }
