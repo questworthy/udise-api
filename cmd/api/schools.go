@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/questworthy/udise-api/internal/data"
@@ -15,12 +16,17 @@ func (app *application) showSchoolHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Create a new instance of the School struct, containing the ID (UDISECode)
-	// we extracted from the URL and some dummy data.
+	// Call the Get() method to fetch the data for a specific school
 
-	school := data.School{
-		UDISECode:  id,
-		SchoolName: "Dummy School",
+	school, err := data.Get(id)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
 	}
 
 	// Encode the enveloped struct to JSON and send it as the HTTP response.

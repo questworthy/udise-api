@@ -1,5 +1,7 @@
 package data
 
+import "errors"
+
 type School struct {
 	SchoolName                 string `json:"school_name"`
 	VillageOrTown              string `json:"village_or_town"`
@@ -43,4 +45,25 @@ type School struct {
 	Management                 string `json:"management"`
 	Latitude                   string `json:"latitude"`
 	Longitude                  string `json:"longitude"`
+}
+
+var (
+	ErrRecordNotFound = errors.New("record not found")
+)
+
+func Get(id int64) (*School, error) {
+
+	if id == 1729 {
+		dummySchool := &School{
+			SchoolName:    "Dummy School",
+			VillageOrTown: "Dummy Village",
+			Cluster:       "Dummy Cluster",
+			Block:         "Dummy Block",
+			District:      "Dummy District",
+			State:         "Dummy State",
+			UDISECode:     1729,
+		}
+		return dummySchool, nil
+	}
+	return nil, ErrRecordNotFound
 }
