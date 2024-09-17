@@ -2,11 +2,7 @@ package main
 
 import (
 	"flag"
-	"fmt"
-	"log"
-	"net/http"
 	"os"
-	"time"
 
 	"github.com/questworthy/udise-api/internal/jsonlog"
 )
@@ -60,27 +56,9 @@ func main() {
 		logger: logger,
 	}
 
-	// Use httprouter instance returned by app.routes() as server handler.
-	srv := &http.Server{
-		Addr:    fmt.Sprintf(":%d", cfg.port),
-		Handler: app.routes(),
-		// Create a new Go log.Logger instance with the log.New() function, passing in
-		// our custom Logger as the first parameter. The "" and 0 indicate that the
-		// log.Logger instance should not use a prefix or any flags.
-		ErrorLog:     log.New(logger, "", 0),
-		IdleTimeout:  time.Minute,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 30 * time.Second,
+	// Call app.serve() to start the server.
+	err := app.serve()
+	if err != nil {
+		logger.PrintFatal(err, nil)
 	}
-
-	// Using the PrintInfo() method to write a "starting server" message at the
-	// INFO level. But this time we pass a map containing additional properties (the
-	// operating environment and server address) as the final parameter.
-	logger.PrintInfo("starting server", map[string]string{
-		"addr": srv.Addr,
-		"env":  cfg.env,
-	})
-
-	err := srv.ListenAndServe()
-	logger.PrintFatal(err, nil)
 }
