@@ -24,6 +24,6 @@ func (app *application) routes() http.Handler {
 	router.HandlerFunc(http.MethodGet, "/v1/healthcheck", app.healthcheckHandler)
 	router.HandlerFunc(http.MethodGet, "/v1/schools/:id", app.showSchoolHandler)
 
-	// Wrap the router with the panic recovery middleware.
-	return app.recoverPanic(router)
+	// Wrap the router with the panic recovery & rate limiter middleware.
+	return app.recoverPanic(app.rateLimit(router))
 }
