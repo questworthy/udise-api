@@ -1,4 +1,29 @@
-# udise-api
+# UDISE API
+
+API to fetch schools details (from a big query table) based on provided udise id.
+
+## Pre-requisite
+
+- Set your GOOGLE_APPLICATION_CREDENTIALS to a GCP service account key.
+
+```bash
+export GOOGLE_APPLICATION_CREDENTIALS=[project-name-xyz].json
+```
+
+## Building
+
+From the root of the source tree, run:
+
+```bash
+make build/api
+```
+
+## Using
+
+```bash
+make run # runs server
+curl localhost:4000/v1/schools/[udise-id] # pings endpoint
+```
 
 ## Project Structure
 
