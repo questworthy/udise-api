@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"os"
 
+	"cloud.google.com/go/bigquery"
 	"github.com/questworthy/udise-api/internal/jsonlog"
 )
 
@@ -28,6 +30,8 @@ type config struct {
 type application struct {
 	config config
 	logger *jsonlog.Logger
+	client *bigquery.Client
+	ctx    context.Context
 }
 
 func main() {
@@ -50,14 +54,23 @@ func main() {
 	// severity level to the standard out stream.
 	logger := jsonlog.New(os.Stdout, jsonlog.LevelInfo)
 
+	// Initialize BigQuery client
+	ctx := context.Background()
+	bqClient, err := bigquery.NewClient(ctx, "afe-bot")
+	if err != nil {
+		logger.PrintFatal(err, nil)
+	}
+
 	// Declare an instance of the app struct
 	app := &application{
 		config: cfg,
 		logger: logger,
+		client: bqClient,
+		ctx:    ctx,
 	}
 
 	// Call app.serve() to start the server.
-	err := app.serve()
+	err = app.serve()
 	if err != nil {
 		logger.PrintFatal(err, nil)
 	}

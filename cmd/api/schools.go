@@ -7,7 +7,6 @@ import (
 	"github.com/questworthy/udise-api/internal/data"
 )
 
-// Add a handler for "GET /v1/schools/:id" endpoint.
 func (app *application) showSchoolHandler(w http.ResponseWriter, r *http.Request) {
 
 	id, err := app.readIDParam(r)
@@ -17,8 +16,7 @@ func (app *application) showSchoolHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	// Call the Get() method to fetch the data for a specific school
-
-	school, err := data.Get(id)
+	school, err := data.Get(id, app.client, app.ctx)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):
