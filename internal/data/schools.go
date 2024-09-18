@@ -4,80 +4,93 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"strconv"
+	"unicode"
 
 	"cloud.google.com/go/bigquery"
 	"google.golang.org/api/iterator"
 )
 
 type School struct {
-	SchoolName                 string `json:"school_name"`
-	VillageOrTown              string `json:"village_or_town"`
-	Cluster                    string `json:"cluster"`
-	Block                      string `json:"block"`
-	District                   string `json:"district"`
-	State                      string `json:"state"`
-	UDISECode                  int64  `json:"udise_code"`
-	Building                   string `json:"building"`
-	ClassRooms                 int    `json:"class_rooms"`
-	BoysToilet                 int    `json:"boys_toilet"`
-	GirlsToilet                int    `json:"girls_toilet"`
-	ComputerAidedLearning      string `json:"computer_aided_learning"`
-	Electricity                string `json:"electricity"`
-	Wall                       string `json:"wall"`
-	Library                    string `json:"library"`
-	Playground                 string `json:"playground"`
-	BooksInLibrary             int    `json:"books_in_library"`
-	DrinkingWater              string `json:"drinking_water"`
-	RampsForDisabled           string `json:"ramps_for_disabled"`
-	Computers                  int    `json:"computers"`
-	InstructionMedium          string `json:"instruction_medium"`
-	MaleTeachers               int    `json:"male_teachers"`
-	PrePrimarySectionAvailable string `json:"pre_primary_section_available"`
-	BoardForClass10th          string `json:"board_for_class_10th"`
-	SchoolType                 string `json:"school_type"`
-	Classes                    string `json:"classes"`
-	FemaleTeachers             int    `json:"female_teachers"`
-	PrePrimaryTeachers         int    `json:"pre_primary_teachers"`
-	BoardForClass10Plus2       string `json:"board_for_class_10_plus_2"`
-	Meal                       string `json:"meal"`
-	Establishment              string `json:"establishment"`
-	SchoolArea                 string `json:"school_area"`
-	SchoolShiftedToNewPlace    string `json:"school_shifted_to_new_place"`
-	HeadTeachers               int    `json:"head_teachers"`
-	HeadTeacherName            string `json:"head_teacher_name"`
-	IsSchoolResidential        string `json:"is_school_residential"`
-	ResidentialType            string `json:"residential_type"`
-	TotalTeachers              int    `json:"total_teachers"`
-	ContractTeachers           int    `json:"contract_teachers"`
-	Management                 string `json:"management"`
-	Latitude                   string `json:"latitude"`
-	Longitude                  string `json:"longitude"`
+	Udise           string `json:"udise"`
+	School_name     string `json:"school_name"`
+	School_area     string `json:"school_area"`
+	Village_or_town string `json:"village_or_town"`
+	Cluster         string `json:"cluster"`
+	Block           string `json:"block"`
+	District        string `json:"district"`
+	State           string `json:"state"`
+	Lat             string `json:"lat"`
+	Long            string `json:"long"`
+	Donor           string `json:"donor"`
 }
 
 var (
-	ErrRecordNotFound = errors.New("record not found")
+	ErrRecordNotFound = errors.New("Record not found.")
+	ErrQueryFailed    = errors.New("Failed to run query.")
+	ErrInvalidUDISE   = errors.New("Invalid UDISE.")
 )
 
-func Get(id int64, bqClient *bigquery.Client, ctx context.Context) (map[string]bigquery.Value, error) {
+func isValidUdise(udise string) bool {
 
-	// [TODO] : Decide if we want to fetch project, dataset or table from command line args
+	// Check if the UDISE code is 11 digits long
+	if len(udise) != 11 {
+		return false
+	}
+
+	// First two digits: state (must be between 01 and 37 for valid Indian states)
+	state, err := strconv.Atoi(udise[:2])
+	if err != nil || state < 1 || state > 37 {
+		return false
+	}
+
+	// Next three digits: district (must be between 001 and 999)
+	district, err := strconv.Atoi(udise[2:5])
+	if err != nil || district < 1 || district > 999 {
+		return false
+	}
+
+	// Next three digits: block (must be between 001 and 999)
+	block, err := strconv.Atoi(udise[5:8])
+	if err != nil || block < 1 || block > 999 {
+		return false
+	}
+
+	// Last digit: check digit (should be a numeric digit)
+	checkDigit := udise[10]
+	if !unicode.IsDigit(rune(checkDigit)) {
+		return false
+	}
+
+	// If all checks pass, UDISE is valid
+	return true
+}
+
+func Get(id int64, bqClient *bigquery.Client, ctx context.Context) (*School, error) {
+
+	udise := strconv.FormatInt(id, 10)
+
+	if !isValidUdise(udise) {
+		return nil, ErrRecordNotFound
+	}
+
 	q := bqClient.Query(`
 	SELECT *
 	FROM afe-bot.quest_schools_matrix.school_details_fact
-	WHERE ` + "`UDISE Code`" + ` = @id
+	WHERE udise = @udise
 	`)
 
 	q.Parameters = []bigquery.QueryParameter{
-		{Name: "id", Value: strconv.FormatInt(id, 10)},
+		{Name: "udise", Value: udise},
 	}
 
 	it, err := q.Read(ctx)
 	if err != nil {
-		log.Fatalf("Failed to run query: %v", err)
+		return nil, ErrQueryFailed
+
 	}
 
+	/**
 	for {
 		var row map[string]bigquery.Value
 		err := it.Next(&row)
@@ -93,14 +106,14 @@ func Get(id int64, bqClient *bigquery.Client, ctx context.Context) (map[string]b
 		return row, nil
 	}
 
-	/** [TODO] : Decide if dat should be returned as School struct
+	**/
 
 	for {
 		var row map[string]bigquery.Value
 		err := it.Next(&row)
 		if err == iterator.Done {
 			// No more rows
-			return nil, ErrRecordNotFound
+			return nil, nil
 		}
 		if err != nil {
 			return nil, fmt.Errorf("failed to iterate through query results: %w", err)
@@ -109,28 +122,48 @@ func Get(id int64, bqClient *bigquery.Client, ctx context.Context) (map[string]b
 		// Map BigQuery row to School struct
 		school := &School{}
 
-		if val, ok := row["School Name"]; ok {
-			school.SchoolName, _ = val.(string)
+		if val, ok := row["udise"]; ok {
+			school.Udise, _ = val.(string)
 		}
-		if val, ok := row["Village or Town"]; ok {
-			school.VillageOrTown, _ = val.(string)
+
+		if val, ok := row["school_name"]; ok {
+			school.School_name, _ = val.(string)
 		}
-		if val, ok := row["Cluster"]; ok {
+
+		if val, ok := row["school_area"]; ok {
+			school.School_area, _ = val.(string)
+		}
+
+		if val, ok := row["village_or_town"]; ok {
+			school.Village_or_town, _ = val.(string)
+		}
+
+		if val, ok := row["cluster"]; ok {
 			school.Cluster, _ = val.(string)
 		}
-		if val, ok := row["Block"]; ok {
+
+		if val, ok := row["block"]; ok {
 			school.Block, _ = val.(string)
 		}
-		if val, ok := row["District"]; ok {
+
+		if val, ok := row["district"]; ok {
 			school.District, _ = val.(string)
 		}
-		if val, ok := row["State"]; ok {
+
+		if val, ok := row["state"]; ok {
 			school.State, _ = val.(string)
 		}
-		if val, ok := row["UDISE Code"]; ok {
-			if udiseCode, err := strconv.ParseInt(val.(string), 10, 64); err == nil {
-				school.UDISECode = udiseCode
-			}
+
+		if val, ok := row["lat"]; ok {
+			school.Lat, _ = val.(string)
+		}
+
+		if val, ok := row["long"]; ok {
+			school.Long, _ = val.(string)
+		}
+
+		if val, ok := row["donor"]; ok {
+			school.Donor, _ = val.(string)
 		}
 
 		// Return the first found record
@@ -138,5 +171,4 @@ func Get(id int64, bqClient *bigquery.Client, ctx context.Context) (map[string]b
 		return school, nil
 	}
 
-	**/
 }
