@@ -3,7 +3,6 @@ package data
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strconv"
 	"unicode"
 
@@ -29,6 +28,7 @@ var (
 	ErrRecordNotFound = errors.New("Record not found.")
 	ErrQueryFailed    = errors.New("Failed to run query.")
 	ErrInvalidUDISE   = errors.New("Invalid UDISE.")
+	ErrIteratorFailed = errors.New("Row iterator failed.")
 )
 
 func isValidUdise(udise string) bool {
@@ -71,7 +71,7 @@ func Get(id int64, bqClient *bigquery.Client, ctx context.Context) (*School, err
 	udise := strconv.FormatInt(id, 10)
 
 	if !isValidUdise(udise) {
-		return nil, ErrRecordNotFound
+		return nil, ErrInvalidUDISE
 	}
 
 	q := bqClient.Query(`
@@ -90,36 +90,17 @@ func Get(id int64, bqClient *bigquery.Client, ctx context.Context) (*School, err
 
 	}
 
-	/**
 	for {
 		var row map[string]bigquery.Value
 		err := it.Next(&row)
 		if err == iterator.Done {
-			// No more rows
-			return nil, nil
+			// Query returned no rows
+			return nil, ErrRecordNotFound
 		}
 		if err != nil {
-			return nil, fmt.Errorf("failed to iterate through query results: %w", err)
+			return nil, ErrIteratorFailed
 		}
 
-		// Return the first found record
-		return row, nil
-	}
-
-	**/
-
-	for {
-		var row map[string]bigquery.Value
-		err := it.Next(&row)
-		if err == iterator.Done {
-			// No more rows
-			return nil, nil
-		}
-		if err != nil {
-			return nil, fmt.Errorf("failed to iterate through query results: %w", err)
-		}
-
-		// Map BigQuery row to School struct
 		school := &School{}
 
 		if val, ok := row["udise"]; ok {
@@ -166,8 +147,6 @@ func Get(id int64, bqClient *bigquery.Client, ctx context.Context) (*School, err
 			school.Donor, _ = val.(string)
 		}
 
-		// Return the first found record
-		fmt.Printf("Record: %+v\n", school)
 		return school, nil
 	}
 

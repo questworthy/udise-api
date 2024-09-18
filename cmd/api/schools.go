@@ -11,7 +11,7 @@ func (app *application) showSchoolHandler(w http.ResponseWriter, r *http.Request
 
 	id, err := app.readIDParam(r)
 	if err != nil {
-		app.notFoundResponse(w, r)
+		app.badRequestResponse(w, r)
 		return
 	}
 
@@ -19,8 +19,13 @@ func (app *application) showSchoolHandler(w http.ResponseWriter, r *http.Request
 	school, err := data.Get(id, app.client, app.ctx)
 	if err != nil {
 		switch {
+
+		case errors.Is(err, data.ErrInvalidUDISE):
+			app.badRequestResponse(w, r)
+
 		case errors.Is(err, data.ErrRecordNotFound):
 			app.notFoundResponse(w, r)
+
 		default:
 			app.serverErrorResponse(w, r, err)
 		}
