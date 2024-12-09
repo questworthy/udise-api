@@ -13,10 +13,12 @@ import (
 type School struct {
 	Udise           string `json:"udise"`
 	School_name     string `json:"school_name"`
-	School_area     string `json:"school_area"`
-	Village_or_town string `json:"village_or_town"`
-	Cluster         string `json:"cluster"`
+	School_location string `json:"school_location"`
+	School_category string `json:"school_category"`
+	School_type     string `json:"school_type"`
+	Village         string `json:"village"`
 	Block           string `json:"block"`
+	Cluster         string `json:"cluster"`
 	District        string `json:"district"`
 	State           string `json:"state"`
 	Lat             string `json:"lat"`
@@ -32,7 +34,6 @@ var (
 )
 
 func isValidUdise(udise string) bool {
-
 	// Check if the UDISE code is 11 digits long
 	if len(udise) != 11 {
 		return false
@@ -67,7 +68,6 @@ func isValidUdise(udise string) bool {
 }
 
 func Get(id int64, bqClient *bigquery.Client, ctx context.Context) (*School, error) {
-
 	udise := strconv.FormatInt(id, 10)
 
 	if !isValidUdise(udise) {
@@ -76,7 +76,7 @@ func Get(id int64, bqClient *bigquery.Client, ctx context.Context) (*School, err
 
 	q := bqClient.Query(`
 	SELECT *
-	FROM afe-bot.quest_schools_matrix.school_details_fact
+	FROM afe-bot.quest_schools_matrix.udise_superset_prod
 	WHERE udise = @udise
 	`)
 
@@ -87,7 +87,6 @@ func Get(id int64, bqClient *bigquery.Client, ctx context.Context) (*School, err
 	it, err := q.Read(ctx)
 	if err != nil {
 		return nil, ErrQueryFailed
-
 	}
 
 	for {
@@ -111,20 +110,28 @@ func Get(id int64, bqClient *bigquery.Client, ctx context.Context) (*School, err
 			school.School_name, _ = val.(string)
 		}
 
-		if val, ok := row["school_area"]; ok {
-			school.School_area, _ = val.(string)
+		if val, ok := row["school_location"]; ok {
+			school.School_location, _ = val.(string)
 		}
 
-		if val, ok := row["village_or_town"]; ok {
-			school.Village_or_town, _ = val.(string)
+		if val, ok := row["school_category"]; ok {
+			school.School_category, _ = val.(string)
 		}
 
-		if val, ok := row["cluster"]; ok {
-			school.Cluster, _ = val.(string)
+		if val, ok := row["school_type"]; ok {
+			school.School_type, _ = val.(string)
+		}
+
+		if val, ok := row["village"]; ok {
+			school.Village, _ = val.(string)
 		}
 
 		if val, ok := row["block"]; ok {
 			school.Block, _ = val.(string)
+		}
+
+		if val, ok := row["cluster"]; ok {
+			school.Cluster, _ = val.(string)
 		}
 
 		if val, ok := row["district"]; ok {
@@ -149,5 +156,4 @@ func Get(id int64, bqClient *bigquery.Client, ctx context.Context) (*School, err
 
 		return school, nil
 	}
-
 }
