@@ -3,8 +3,6 @@ package data
 import (
 	"context"
 	"errors"
-	"strconv"
-	"unicode"
 
 	"cloud.google.com/go/bigquery"
 	"google.golang.org/api/iterator"
@@ -39,37 +37,12 @@ func isValidUdise(udise string) bool {
 		return false
 	}
 
-	// First two digits: state (must be between 01 and 37 for valid Indian states)
-	state, err := strconv.Atoi(udise[:2])
-	if err != nil || state < 1 || state > 37 {
-		return false
-	}
-
-	// Next three digits: district (must be between 001 and 999)
-	district, err := strconv.Atoi(udise[2:5])
-	if err != nil || district < 1 || district > 999 {
-		return false
-	}
-
-	// Next three digits: block (must be between 001 and 999)
-	block, err := strconv.Atoi(udise[5:8])
-	if err != nil || block < 1 || block > 999 {
-		return false
-	}
-
-	// Last digit: check digit (should be a numeric digit)
-	checkDigit := udise[10]
-	if !unicode.IsDigit(rune(checkDigit)) {
-		return false
-	}
-
 	// If all checks pass, UDISE is valid
 	return true
 }
 
-func Get(id int64, bqClient *bigquery.Client, ctx context.Context) (*School, error) {
-	udise := strconv.FormatInt(id, 10)
-
+func Get(id string, bqClient *bigquery.Client, ctx context.Context) (*School, error) {
+	udise := id
 	if !isValidUdise(udise) {
 		return nil, ErrInvalidUDISE
 	}

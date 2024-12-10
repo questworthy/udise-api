@@ -75,7 +75,6 @@ func (l *Logger) print(level Level, message string, properties map[string]string
 	// logger, then return with no further action.
 	if level < l.minLevel {
 		return 0, nil
-
 	}
 	// Declare an anonymous struct holding the data for the log entry.
 	aux := struct {
